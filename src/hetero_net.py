@@ -56,7 +56,7 @@ class Hetero_Cryo_Net(LightningModule):
             n_residues=n_residues,
             decoder_net=MLP(
                 in_dim=latent_dim,
-                out_dim=3 * n_residues,
+                out_dim=3*n_residues,
                 n_layers=7,
                 use_layer_norm=False,
             ),
@@ -273,5 +273,4 @@ class Hetero_Cryo_Net(LightningModule):
 
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.parameters(), lr=self.lr)
-
         return optimizer

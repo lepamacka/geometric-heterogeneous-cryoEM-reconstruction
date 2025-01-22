@@ -33,7 +33,7 @@ class AdkDataset(Dataset):
         self.side_len = 80
         self.defocus = torch.tensor(20000.0, dtype=torch.float)
         self.astigm_angle = torch.tensor(0.0, dtype=torch.float)
-        self.resolution = 1
+        self.resolution = 1.
         self.accelerating_voltage = 300
         self.spherical_aberration = 2.7
 
@@ -84,22 +84,19 @@ class AdkDataset(Dataset):
 
         assert os.path.isdir(self.root_dir)
 
-        file_path = os.path.join(
-            self.root_dir, "4ake_heterogeneous", f"picked_particles_{self.dose}e.pickle"
-        )
+        mrcs_path = os.path.join(self.root_dir, "micrographs.pt")
 
         # load the dataset
-        particles = torch.load(file_path)
+        imgs = torch.load(mrcs_path, weights_only=True)
 
-        imgs = particles["imgs"].to(torch.float)
         # normalize images
-        self.img = (imgs - imgs.mean()) / imgs.std()
+        imgs -= imgs.mean()
+        self.img = imgs / imgs.std()
 
-        # Parakeet uses "axis–angle representation" for orientations. See https://github.com/rosalindfranklininstitute/parakeet/blob/b1faf5eed805cdb2b472400989737b6b63d5e062/src/parakeet/scan.py#L211C1-L211C1
-        rot_mat = R.from_rotvec(particles["poses"]).as_matrix()
-        self.pose = torch.from_numpy(rot_mat).to(torch.float)
+        rots_path = os.path.join(self.root_dir, "rots.pt")
+        self.pose = torch.load(rots_path, weights_only=True)
 
-        self.conf_idx = particles["conf_id"].to(torch.long)
+        self.conf_idx = torch.arange(start=0, end=102).unsqueeze(1).repeat((1, 1000)).view(-1)
 
     def validation_subset(self, val_size):
         """
@@ -131,8 +128,8 @@ class AdkDataset(Dataset):
         Loads all MD simulated conformations from file into a tensor. All non-hydrogen atoms are removed. Relevant auxiliary tensors are also returned, in particular c_alpha_idx and res_idx.
         """
 
-        trajectory_path = os.path.join(self.root_dir, "md", "dims0001_fit-core.dcd")
-        topology_path = os.path.join(self.root_dir, "md", "adk4ake.psf")
+        trajectory_path = os.path.join(self.root_dir, "4ake_md", "dims0001_fit-core.dcd")
+        topology_path = os.path.join(self.root_dir, "4ake_md", "adk4ake.psf")
 
         assert os.path.isfile(trajectory_path)
         assert os.path.isfile(topology_path)
